@@ -1,0 +1,256 @@
+---
+title: "Onsettiming"
+author: "Zhe Zheng"
+date: "8/31/2021"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mgcv)
+library(pspline.inference)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+RSVsearch2016to2019 <- readRDS("D:/re-emergent RSV timing/rsv_onsetdif/onset_spatial/RSVsearch2016to2019.rds")
+d1.c.alt <- readRDS("D:/re-emergent RSV timing/rsv_onsetdif/onset_spatial/RSVsearch2021.rds")
+states <- readRDS("D:/re-emergent RSV timing/rsv_onsetdif/onset_spatial/statenames.rds")
+```
+
+```{r}
+model.2016 <- list()
+model.2016 <- lapply(states, function(state){gam(cases ~ s(x=time, k=4, bs="ps"), family=poisson, method="REML", data=data.frame(time=seq(1:52), cases=RSVsearch2016to2019['2016',,state,'rsv']))})
+```
+
+```{r}
+model.2017 <- list()
+model.2017 <- lapply(states, function(state){gam(cases ~ s(x=time, k=4, bs="ps"), family=poisson, method="REML", data=data.frame(time=seq(1:52), cases=RSVsearch2016to2019['2017',,state,'rsv']))})
+```
+
+```{r}
+model.2018 <- list()
+model.2018 <- lapply(states, function(state){gam(cases ~ s(x=time, k=4, bs="ps"), family=poisson, method="REML", data=data.frame(time=seq(1:52), cases=RSVsearch2016to2019['2018',,state,'rsv']))})
+```
+
+```{r}
+model.2019 <- list()
+model.2019 <- lapply(states, function(state){gam(cases ~ s(x=time, k=4, bs="ps"), family=poisson, method="REML", data=data.frame(time=seq(1:52), cases=RSVsearch2016to2019['2019',,state,'rsv']))})
+```
+
+```{r}
+deriv <- function(x, y) diff(y) / diff(x)
+middle_pts <- function(x) x[-1] - diff(x) / 2
+```
+
+```{r}
+t <- seq(0.5,52.5,0.01)
+dtime <- seq(0.5,52.5,0.01)
+cases.samples.2016 <- list()
+onset.samples.2016 <- list()
+for (i in 1:length(states)){cases.samples.2016[[i]] = pspline.sample.timeseries(model.2016[[i]], data.frame(time=t), pspline.outbreak.cases, samples=150)}
+
+for (i in 1:length(states)){
+onset.samples.2016[[i]] = cases.samples.2016[[i]] %>% 
+  group_by(pspline.sample) %>%
+  do((function(data){
+    deriv.pred = data.frame(deriv=diff(data$cases)/diff(data$time),time=c(1:length(diff(t))))
+  
+    second_d <- data.frame(second.deriv=deriv(middle_pts(dtime), deriv(dtime, data$cases)),time=c(1:(length(diff(t))-1)))
+                           
+    indicator = deriv.pred[which(deriv.pred$deriv>0),] 
+    
+    second_d_test <- second_d[second_d$time%in%indicator$time,]
+    
+    onset = dtime[second_d_test$time[second_d_test$second.deriv==max(second_d_test$second.deriv)]]
+
+    data.frame(
+      pspline.sample = tail(data$pspline.sample, 1),
+      onset = onset,
+      cases = data$cases[which(data$time==onset)])
+  })(.)) %>%
+  ungroup()}
+
+onset.2016 <- matrix(data=NA,nrow = length(states),ncol = 4)
+colnames(onset.2016) <- c("mean","lower","upper","state")
+for (i in 1:length(states)){
+onset.2016[i,1] <- mean(onset.samples.2016[[i]]$onset)
+onset.2016[i,2] <- quantile(onset.samples.2016[[i]]$onset,0.025)
+onset.2016[i,3] <- quantile(onset.samples.2016[[i]]$onset,0.975) }
+onset.2016 <- as.data.frame(onset.2016)
+onset.2016[,4] <- states
+```
+
+```{r}
+cases.samples.2017 <- list()
+onset.samples.2017 <- list()
+for (i in 1:length(states)){cases.samples.2017[[i]] = pspline.sample.timeseries(model.2017[[i]], data.frame(time=t), pspline.outbreak.cases, samples=150)}
+
+for (i in 1:length(states)){
+onset.samples.2017[[i]] = cases.samples.2017[[i]] %>% 
+  group_by(pspline.sample) %>%
+  do((function(data){
+    deriv.pred = data.frame(deriv=diff(data$cases)/diff(data$time),time=c(1:length(diff(t))))
+  
+    second_d <- data.frame(second.deriv=deriv(middle_pts(dtime), deriv(dtime, data$cases)),time=c(1:(length(diff(t))-1)))
+                           
+    indicator = deriv.pred[which(deriv.pred$deriv>0),] 
+    
+    second_d_test <- second_d[second_d$time%in%indicator$time,]
+    
+    onset = dtime[second_d_test$time[second_d_test$second.deriv==max(second_d_test$second.deriv)]]
+
+    data.frame(
+      pspline.sample = tail(data$pspline.sample, 1),
+      onset = onset,
+      cases = data$cases[which(data$time==onset)])
+  })(.)) %>%
+  ungroup()}
+
+onset.2017 <- matrix(data=NA,nrow = length(states),ncol = 4)
+colnames(onset.2017) <- c("mean","lower","upper","state")
+for (i in 1:length(states)){
+onset.2017[i,1] <- mean(onset.samples.2017[[i]]$onset)
+onset.2017[i,2] <- quantile(onset.samples.2017[[i]]$onset,0.025)
+onset.2017[i,3] <- quantile(onset.samples.2017[[i]]$onset,0.975) }
+onset.2017 <- as.data.frame(onset.2017)
+onset.2017[,4] <- states
+```
+
+```{r}
+cases.samples.2018 <- list()
+onset.samples.2018 <- list()
+for (i in 1:length(states)){cases.samples.2018[[i]] = pspline.sample.timeseries(model.2018[[i]], data.frame(time=t), pspline.outbreak.cases, samples=150)}
+
+for (i in 1:length(states)){
+onset.samples.2018[[i]] = cases.samples.2018[[i]] %>% 
+  group_by(pspline.sample) %>%
+  do((function(data){
+    deriv.pred = data.frame(deriv=diff(data$cases)/diff(data$time),time=c(1:length(diff(t))))
+  
+    second_d <- data.frame(second.deriv=deriv(middle_pts(dtime), deriv(dtime, data$cases)),time=c(1:(length(diff(t))-1)))
+                           
+    indicator = deriv.pred[which(deriv.pred$deriv>0),] 
+    
+    second_d_test <- second_d[second_d$time%in%indicator$time,]
+    
+    onset = dtime[second_d_test$time[second_d_test$second.deriv==max(second_d_test$second.deriv)]]
+
+    data.frame(
+      pspline.sample = tail(data$pspline.sample, 1),
+      onset = onset,
+      cases = data$cases[which(data$time==onset)])
+  })(.)) %>%
+  ungroup()}
+
+onset.2018 <- matrix(data=NA,nrow = length(states),ncol = 4)
+colnames(onset.2018) <- c("mean","lower","upper","state")
+for (i in 1:length(states)){
+onset.2018[i,1] <- mean(onset.samples.2018[[i]]$onset)
+onset.2018[i,2] <- quantile(onset.samples.2018[[i]]$onset,0.025)
+onset.2018[i,3] <- quantile(onset.samples.2018[[i]]$onset,0.975) }
+onset.2018 <- as.data.frame(onset.2018)
+onset.2018[,4] <- states
+```
+
+```{r}
+cases.samples.2019 <- list()
+onset.samples.2019 <- list()
+for (i in 1:length(states)){cases.samples.2019[[i]] = pspline.sample.timeseries(model.2019[[i]], data.frame(time=t), pspline.outbreak.cases, samples=150)}
+
+for (i in 1:length(states)){ 
+onset.samples.2019[[i]] = cases.samples.2019[[i]] %>% 
+  group_by(pspline.sample) %>%
+  do((function(data){
+    deriv.pred = data.frame(deriv=diff(data$cases)/diff(data$time),time=c(1:length(diff(t))))
+  
+    second_d <- data.frame(second.deriv=deriv(middle_pts(dtime), deriv(dtime, data$cases)),time=c(1:(length(diff(t))-1)))
+                           
+    indicator = deriv.pred[which(deriv.pred$deriv>0),] 
+    
+    second_d_test <- second_d[second_d$time%in%indicator$time,]
+    
+    onset = dtime[second_d_test$time[second_d_test$second.deriv==max(second_d_test$second.deriv)]]
+
+    data.frame(
+      pspline.sample = tail(data$pspline.sample, 1),
+      onset = onset,
+      cases = data$cases[which(data$time==onset)])
+  })(.)) %>%
+  ungroup()}
+
+onset.2019 <- matrix(data=NA,nrow = length(states),ncol = 4)
+colnames(onset.2019) <- c("mean","lower","upper","state")
+for (i in 1:length(states)){
+onset.2019[i,1] <- mean(onset.samples.2019[[i]]$onset)
+onset.2019[i,2] <- quantile(onset.samples.2019[[i]]$onset,0.025)
+onset.2019[i,3] <- quantile(onset.samples.2019[[i]]$onset,0.975) }
+onset.2019 <- as.data.frame(onset.2019)
+onset.2019[,4] <- states
+```
+
+
+
+```{r}
+onset.whole <- c()
+for (i in 1:length(states)){
+onset.whole[i] <- mean(c(onset.samples.2019[[i]]$onset,onset.samples.2018[[i]]$onset,onset.samples.2017[[i]]$onset,onset.samples.2016[[i]]$onset))}
+onset.whole <- as.data.frame(onset.whole)
+onset.whole$state <- states
+colnames(onset.whole)[1] <- "mean"
+for (i in 1:length(states)){
+onset.whole[i,3] <- quantile(c(onset.samples.2019[[i]]$onset,onset.samples.2018[[i]]$onset,onset.samples.2017[[i]]$onset,onset.samples.2016[[i]]$onset),0.025)
+onset.whole[i,4] <- quantile(c(onset.samples.2019[[i]]$onset,onset.samples.2018[[i]]$onset,onset.samples.2017[[i]]$onset,onset.samples.2016[[i]]$onset),0.975)
+onset.whole[i,5] <-onset.whole[i,4] -onset.whole[i,3]  }
+
+onset.2016$width <- onset.2016$upper-onset.2016$lower
+onset.2017$width <- onset.2017$upper-onset.2017$lower
+onset.2018$width <- onset.2018$upper-onset.2018$lower
+onset.2019$width <- onset.2019$upper-onset.2019$lower
+```
+
+
+```{r}
+onset.cases <- c()
+for (i in 1:length(states)){
+onset.cases[i] <- mean(c(onset.samples.2019[[i]]$cases,onset.samples.2018[[i]]$cases,onset.samples.2017[[i]]$cases,onset.samples.2016[[i]]$cases))}
+onset.cases <- as.data.frame(onset.cases)
+onset.cases$state <- states
+colnames(onset.cases)[1] <- "mean"
+for (i in 1:length(states)){
+onset.cases[i,3] <- quantile(c(onset.samples.2019[[i]]$cases,onset.samples.2018[[i]]$cases,onset.samples.2017[[i]]$cases,onset.samples.2016[[i]]$cases),0.025)
+onset.cases[i,4] <- quantile(c(onset.samples.2019[[i]]$cases,onset.samples.2018[[i]]$cases,onset.samples.2017[[i]]$cases,onset.samples.2016[[i]]$cases),0.975)
+onset.cases[i,5] <-onset.cases[i,4] -onset.cases[i,3]  }
+```
+
+```{r}
+model.2020 <- list()
+model.2020 <- lapply(states, function(state){gam(cases ~ s(x=time, k=4, bs="ps"), family=poisson, method="REML", data=data.frame(time=seq(1:52), cases=d1.c.alt['2020',,state,'rsv']))})
+```
+
+```{r}
+cases.samples.2020 <- list()
+onset.samples.2020 <- list()
+for (i in 1:length(states)){cases.samples.2020[[i]] = pspline.sample.timeseries(model.2020[[i]], data.frame(time=t), pspline.outbreak.cases, samples=150)
+cases.samples.2020[[i]]['casethreshold'] = onset.cases[i,1]}
+
+
+for (i in 1:length(states)){ 
+onset.samples.2020[[i]] = cases.samples.2020[[i]] %>% 
+group_by(pspline.sample) %>%
+  do((function(data){
+    cases.frac = cumsum(data$cases) / sum(data$cases)
+    data.frame(
+      pspline.sample = tail(data$pspline.sample, 1),
+      onset = tail(data$time[data$cases <= data$casethreshold], 1)
+    )
+  })(.)) %>%
+  ungroup()}
+
+onset.2020 <- matrix(data=NA,nrow = length(states),ncol = 2)
+colnames(onset.2020) <- c("onset","state")
+for (i in 1:length(states)){
+onset.2020[i,1] <- mean(onset.samples.2020[[i]]$onset)} 
+onset.2020 <- as.data.frame(onset.2020)
+onset.2020[,2] <- states
+onset.2020$grey = ifelse(onset.2020$onset==max(t),NA,onset.2020$onset)
+```
+
