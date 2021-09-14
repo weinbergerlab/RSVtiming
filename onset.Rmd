@@ -37,8 +37,8 @@ model.2019 <- lapply(states, function(state){gam(cases ~ s(x=time, k=4, bs="ps")
 ```
 
 ```{r}
-deriv <- function(x, y) diff(y) / diff(x)
-middle_pts <- function(x) x[-1] - diff(x) / 2
+deriv <- function(x, y) diff(y) / diff(x) # function to calculate derivative
+middle_pts <- function(x) x[-1] - diff(x) / 2 # function to assist derivative calculation
 ```
 
 ```{r}
@@ -46,26 +46,26 @@ t <- seq(0.5,52.5,0.01)
 dtime <- seq(0.5,52.5,0.01)
 cases.samples.2016 <- list()
 onset.samples.2016 <- list()
-for (i in 1:length(states)){cases.samples.2016[[i]] = pspline.sample.timeseries(model.2016[[i]], data.frame(time=t), pspline.outbreak.cases, samples=150)}
+for (i in 1:length(states)){cases.samples.2016[[i]] = pspline.sample.timeseries(model.2016[[i]], data.frame(time=t), pspline.outbreak.cases, samples=150)} # sample the timing of RSV epidemics in 2016
 
 for (i in 1:length(states)){
 onset.samples.2016[[i]] = cases.samples.2016[[i]] %>% 
   group_by(pspline.sample) %>%
   do((function(data){
-    deriv.pred = data.frame(deriv=diff(data$cases)/diff(data$time),time=c(1:length(diff(t))))
+    deriv.pred = data.frame(deriv=diff(data$cases)/diff(data$time),time=c(1:length(diff(t)))) # calculate the first derivative
   
-    second_d <- data.frame(second.deriv=deriv(middle_pts(dtime), deriv(dtime, data$cases)),time=c(1:(length(diff(t))-1)))
+    second_d <- data.frame(second.deriv=deriv(middle_pts(dtime), deriv(dtime, data$cases)),time=c(1:(length(diff(t))-1))) # calculate the second derivative
                            
-    indicator = deriv.pred[which(deriv.pred$deriv>0),] 
+    indicator = deriv.pred[which(deriv.pred$deriv>0),]  # only look at second derivatives in the increasing segment (first derivative>0 )
     
     second_d_test <- second_d[second_d$time%in%indicator$time,]
     
-    onset = dtime[second_d_test$time[second_d_test$second.deriv==max(second_d_test$second.deriv)]]
+    onset = dtime[second_d_test$time[second_d_test$second.deriv==max(second_d_test$second.deriv)]] # find when the second derivative of the smooth functions reached its maximum 
 
     data.frame(
       pspline.sample = tail(data$pspline.sample, 1),
       onset = onset,
-      cases = data$cases[which(data$time==onset)])
+      cases = data$cases[which(data$time==onset)]) # find the search number when the second derivative reach its maximum
   })(.)) %>%
   ungroup()}
 
@@ -211,7 +211,7 @@ onset.2019$width <- onset.2019$upper-onset.2019$lower
 ```{r}
 onset.cases <- c()
 for (i in 1:length(states)){
-onset.cases[i] <- mean(c(onset.samples.2019[[i]]$cases,onset.samples.2018[[i]]$cases,onset.samples.2017[[i]]$cases,onset.samples.2016[[i]]$cases))}
+onset.cases[i] <- mean(c(onset.samples.2019[[i]]$cases,onset.samples.2018[[i]]$cases,onset.samples.2017[[i]]$cases,onset.samples.2016[[i]]$cases))}  # find the onset threshold for year 2021
 onset.cases <- as.data.frame(onset.cases)
 onset.cases$state <- states
 colnames(onset.cases)[1] <- "mean"
@@ -237,10 +237,9 @@ for (i in 1:length(states)){
 onset.samples.2020[[i]] = cases.samples.2020[[i]] %>% 
 group_by(pspline.sample) %>%
   do((function(data){
-    cases.frac = cumsum(data$cases) / sum(data$cases)
     data.frame(
       pspline.sample = tail(data$pspline.sample, 1),
-      onset = tail(data$time[data$cases <= data$casethreshold], 1)
+      onset = tail(data$time[data$cases <= data$casethreshold], 1) # The timing of RSV epidemics in 2021 was defined as when the search number cross the onset threshold
     )
   })(.)) %>%
   ungroup()}
