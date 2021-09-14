@@ -1,0 +1,38 @@
+---
+title: "datacleaning"
+author: "Zhe Zheng"
+date: "9/13/2021"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r}
+onset <- data.frame(state=onset.2020$state,previous=onset.whole$mean,now=onset.2020$onset)
+onset_FL <- data.frame(state=onset.2020$state[-which(onset.2020$state=="FL")],previous=onset.whole$mean[-which(onset.whole$state=="FL")]-onset.whole$mean[which(onset.whole$state=="FL")],now=onset.2020$onset[-which(onset.2020$state=="FL")]-onset.2020$onset[which(onset.2020$state=="FL")])
+
+
+y <- log(onset_FL$now)
+saveRDS(y,"D:/re-emergent RSV timing/sample_requiredata/y.rds")
+```
+
+```{r}
+Index<- read.csv("D:/re-emergent RSV timing/stringency index/StrIndexApr05.csv")
+Index <- Index[Index$state%in%onset_FL$state,]
+pd_hz <- readRDS("D:/re-emergent RSV timing/sample_requiredata/pd_hz.rds")
+pd_hz <- pd_hz[pd_hz$state%in%onset_FL$state,]
+
+x_1 <- rep(1,nrow(onset_FL))
+x_2 <- as.numeric(scale(pd_hz$`Population Density 2020 Census`))
+x_3 <- as.numeric(scale(pd_hz$familysize))
+x_4 <- as.numeric(scale(Index$Index))
+x_5 <- log(onset_FL$previous)
+x <- matrix(data=c(x_1,x_2,x_3,x_4,x_5),nrow = 47,ncol = 5)
+
+saveRDS(x,"D:/re-emergent RSV timing/sample_requiredata/x.rds")
+```
+
